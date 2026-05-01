@@ -291,6 +291,7 @@
 
 <!-- ── Script ─────────────────────────────────────────────────────────── -->
 <script>
+const BASE_URL = window.location.origin;
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PALETTE = ['#4a6cf7','#48bb78','#ed8936','#e53e3e','#9f7aea','#38b2ac','#f6ad55','#667eea'];
 
@@ -334,7 +335,7 @@ async function apiFetch(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
   if (token) headers['Authorization'] = 'Bearer ' + token;
   try {
-    const res = await fetch('/api' + path, { ...opts, headers });
+    const res = await fetch(BASE_URL + '/api' + path, { ...opts, headers });
     if (res.status === 401) {
       setToken(null);
       showPage('login');
