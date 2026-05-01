@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+    /* Nav */
+    nav { background: #1a1a2e; padding: .875rem 2rem; display: flex; align-items: center; gap: 1.5rem; }
+    .nav-brand { color: #fff; font-weight: 700; font-size: 1.1rem; margin-right: auto; }
+    nav a { color: #a0aec0; text-decoration: none; cursor: pointer; font-size: .9rem; transition: color .15s; }
+    nav a:hover, nav a.active { color: #fff; }
+    .nav-logout { color: #fc8181 !important; }
+
+    /* Auth */
+    .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .auth-card { background: #fff; padding: 2rem; border-radius: 10px; width: 360px; box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+    .auth-card h2 { margin-bottom: 1.5rem; font-size: 1.4rem; }
+    .auth-card p { margin-top: 1rem; font-size: .875rem; color: #718096; }
+    .auth-card p a { color: #4a6cf7; cursor: pointer; text-decoration: underline; }
+
+    /* Layout */
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+    h2 { margin-bottom: 1.5rem; font-size: 1.35rem; color: #1a1a2e; }
+    h3 { font-size: .95rem; font-weight: 600; margin-bottom: 1rem; color: #2d3748; }
+
+    /* Cards */
+    .card { background: #fff; border-radius: 10px; padding: 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,.07); margin-bottom: 1.5rem; }
+
+    /* Stat grid */
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: #fff; border-radius: 10px; padding: 1.25rem 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,.07); border-left: 4px solid transparent; }
+    .stat-card.income  { border-color: #48bb78; }
+    .stat-card.expense { border-color: #fc8181; }
+    .stat-card.savings { border-color: #4a6cf7; }
+    .stat-label { font-size: .75rem; color: #718096; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .4rem; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; }
+    .stat-card.income  .stat-value { color: #38a169; }
+    .stat-card.expense .stat-value { color: #e53e3e; }
+    .stat-card.savings .stat-value { color: #4a6cf7; }
+
+    /* Charts */
+    .charts-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 1rem; margin-bottom: 1.5rem; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    th { background: #f7fafc; padding: .6rem .75rem; text-align: left; font-size: .75rem; color: #718096; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #e2e8f0; }
+    td { padding: .65rem .75rem; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .empty { text-align: center; color: #a0aec0; padding: 1.5rem !important; }
+
+    /* Forms */
+    .form-group { display: flex; flex-direction: column; gap: .3rem; }
+    .form-group label { font-size: .78rem; font-weight: 600; color: #4a5568; }
+    input, select { padding: .55rem .75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: .875rem; outline: none; transition: border .15s; background: #fff; }
+    input:focus, select:focus { border-color: #4a6cf7; box-shadow: 0 0 0 3px rgba(74,108,247,.1); }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem 1rem; align-items: end; }
+
+    /* Buttons */
+    .btn { padding: .55rem 1.25rem; border: none; border-radius: 6px; cursor: pointer; font-size: .875rem; font-weight: 600; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #4a6cf7; color: #fff; }
+    .btn-sm { padding: .3rem .65rem; font-size: .78rem; }
+    .btn-danger { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; }
+
+    /* Badges */
+    .badge { font-size: .7rem; padding: .2rem .55rem; border-radius: 20px; font-weight: 700; text-transform: uppercase; }
+    .badge-income  { background: #f0fff4; color: #276749; }
+    .badge-expense { background: #fff5f5; color: #9b2c2c; }
+
+    /* Error */
+    .error-msg { background: #fff5f5; color: #c53030; border-radius: 6px; padding: .6rem .9rem; margin-bottom: 1rem; font-size: .875rem; display: none; }
+
+    /* Alert cards */
+    .alert-card { background: #fff5f5; border-left: 4px solid #e53e3e; border-radius: 6px; padding: .85rem 1rem; margin-bottom: .75rem; font-size: .875rem; }
+    .alert-card strong { color: #c53030; }
+
+    /* Budget progress */
+    .budget-item { background: #fff; border-radius: 10px; padding: 1.25rem 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,.07); margin-bottom: 1rem; }
+    .budget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
+    .budget-name { font-weight: 600; font-size: .95rem; }
+    .budget-meta { font-size: .82rem; color: #718096; margin-bottom: .6rem; }
+    .progress-track { background: #e2e8f0; border-radius: 20px; height: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 20px; }
+    .fill-ok   { background: #48bb78; }
+    .fill-warn { background: #ed8936; }
+    .fill-over { background: #e53e3e; }
+  </style>
+</head>
+<body>
+
+<!-- Nav (hidden until logged in) -->
+<nav id="nav" style="display:none">
+  <span class="nav-brand">Finance Tracker</span>
+  <a id="nav-dashboard"    onclick="showPage('dashboard')">Dashboard</a>
+  <a id="nav-transactions" onclick="showPage('transactions')">Transactions</a>
+  <a id="nav-budgets"      onclick="showPage('budgets')">Budgets</a>
+  <a class="nav-logout"    onclick="logout()">Logout</a>
+</nav>
+
+<!-- ── Login ────────────────────────────────────────────────────────── -->
+<div id="page-login" class="auth-wrap" style="display:none">
+  <div class="auth-card">
+    <h2>Sign In</h2>
+    <div id="login-error" class="error-msg"></div>
+    <form onsubmit="handleLogin(event)">
+      <div class="form-group" style="margin-bottom:1rem">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group" style="margin-bottom:1.25rem">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Sign In</button>
+    </form>
+    <p>No account? <a onclick="showPage('register')">Register here</a></p>
+  </div>
+</div>
+
+<!-- ── Register ──────────────────────────────────────────────────────── -->
+<div id="page-register" class="auth-wrap" style="display:none">
+  <div class="auth-card">
+    <h2>Create Account</h2>
+    <div id="register-error" class="error-msg"></div>
+    <form onsubmit="handleRegister(event)">
+      <div class="form-group" style="margin-bottom:1rem">
+        <label>Name</label>
+        <input type="text" id="reg-name" placeholder="Your Name" required>
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group" style="margin-bottom:1.25rem">
+        <label>Password</label>
+        <input type="password" id="reg-password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Create Account</button>
+    </form>
+    <p>Already have an account? <a onclick="showPage('login')">Sign In</a></p>
+  </div>
+</div>
+
+<!-- ── Dashboard ─────────────────────────────────────────────────────── -->
+<div id="page-dashboard" class="container" style="display:none">
+  <h2>Dashboard</h2>
+
+  <div class="stat-grid">
+    <div class="stat-card income">
+      <div class="stat-label">Total Income</div>
+      <div class="stat-value" id="stat-income">—</div>
+    </div>
+    <div class="stat-card expense">
+      <div class="stat-label">Total Expenses</div>
+      <div class="stat-value" id="stat-expenses">—</div>
+    </div>
+    <div class="stat-card savings">
+      <div class="stat-label">Net Savings</div>
+      <div class="stat-value" id="stat-savings">—</div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="card">
+      <h3>Income vs Expenses — Last 6 Months</h3>
+      <canvas id="bar-chart"></canvas>
+    </div>
+    <div class="card">
+      <h3>Expenses by Category</h3>
+      <canvas id="doughnut-chart"></canvas>
+    </div>
+  </div>
+
+  <div id="alerts-section" class="card" style="display:none">
+    <h3>⚠ Budget Alerts</h3>
+    <div id="alerts-list"></div>
+  </div>
+
+  <div class="card">
+    <h3>Recent Transactions</h3>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th></tr>
+      </thead>
+      <tbody id="recent-txn-body">
+        <tr><td colspan="5" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Transactions ───────────────────────────────────────────────────── -->
+<div id="page-transactions" class="container" style="display:none">
+  <h2>Transactions</h2>
+
+  <div class="card">
+    <h3>Add Transaction</h3>
+    <div id="txn-error" class="error-msg"></div>
+    <form onsubmit="handleAddTransaction(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number" id="txn-amount" step="0.01" placeholder="0.00" required>
+        </div>
+        <div class="form-group" style="grid-column: span 2">
+          <label>Description</label>
+          <input type="text" id="txn-desc" placeholder="What was this for?" required>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="txn-date" required>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="txn-type">
+            <option value="EXPENSE" selected>Expense</option>
+            <option value="INCOME">Income</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="txn-category">
+            <option value="">— None —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Currency</label>
+          <input type="text" id="txn-currency" value="USD" maxlength="3">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>All Transactions</h3>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Currency</th><th></th></tr>
+      </thead>
+      <tbody id="txn-body">
+        <tr><td colspan="7" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Budgets ────────────────────────────────────────────────────────── -->
+<div id="page-budgets" class="container" style="display:none">
+  <h2>Budgets</h2>
+
+  <div class="card">
+    <h3>Set Budget</h3>
+    <div id="budget-error" class="error-msg"></div>
+    <form onsubmit="handleAddBudget(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="budget-cat"></select>
+        </div>
+        <div class="form-group">
+          <label>Amount ($)</label>
+          <input type="number" id="budget-amount" step="0.01" min="0.01" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label>Month</label>
+          <input type="number" id="budget-month" min="1" max="12" required>
+        </div>
+        <div class="form-group">
+          <label>Year</label>
+          <input type="number" id="budget-year" min="2020" required>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn btn-primary">Set</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div id="budget-list"></div>
+</div>
+
+<!-- ── Script ─────────────────────────────────────────────────────────── -->
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PALETTE = ['#4a6cf7','#48bb78','#ed8936','#e53e3e','#9f7aea','#38b2ac','#f6ad55','#667eea'];
+
+let token = localStorage.getItem('token');
+let barChart = null;
+let doughnutChart = null;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function setToken(t) {
+  token = t;
+  t ? localStorage.setItem('token', t) : localStorage.removeItem('token');
+}
+
+function fmt(n) {
+  return '$' + parseFloat(n || 0).toFixed(2);
+}
+
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideErr(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+function destroyCharts() {
+  if (barChart)      { barChart.destroy();      barChart = null; }
+  if (doughnutChart) { doughnutChart.destroy(); doughnutChart = null; }
+}
+
+// ── apiFetch ───────────────────────────────────────────────────────────────
+
+async function apiFetch(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  try {
+    const res = await fetch('/api' + path, { ...opts, headers });
+    if (res.status === 401) {
+      setToken(null);
+      showPage('login');
+      return null;
+    }
+    return await res.json();
+  } catch (e) {
+    console.error('apiFetch', path, e);
+    return null;
+  }
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+
+function showPage(page) {
+  ['login','register','dashboard','transactions','budgets'].forEach(p => {
+    const el = document.getElementById('page-' + p);
+    el.style.display = 'none';
+  });
+
+  const isAuth = page === 'login' || page === 'register';
+  document.getElementById('page-' + page).style.display = isAuth ? 'flex' : 'block';
+  document.getElementById('nav').style.display = isAuth ? 'none' : 'flex';
+
+  ['dashboard','transactions','budgets'].forEach(p => {
+    const el = document.getElementById('nav-' + p);
+    if (el) el.className = p === page ? 'active' : '';
+  });
+
+  if (page === 'dashboard')    loadDashboard();
+  if (page === 'transactions') loadTransactions();
+  if (page === 'budgets')      loadBudgets();
+}
+
+function logout() {
+  setToken(null);
+  destroyCharts();
+  showPage('login');
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+
+async function handleLogin(e) {
+  e.preventDefault();
+  hideErr('login-error');
+  const data = await apiFetch('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: document.getElementById('login-email').value,
+      password: document.getElementById('login-password').value,
+    }),
+  });
+  if (!data) return;
+  if (data.error) return showErr('login-error', data.error);
+  setToken(data.token);
+  showPage('dashboard');
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  hideErr('register-error');
+  const data = await apiFetch('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: document.getElementById('reg-name').value,
+      email: document.getElementById('reg-email').value,
+      password: document.getElementById('reg-password').value,
+    }),
+  });
+  if (!data) return;
+  if (data.error) return showErr('register-error', data.error);
+  setToken(data.token);
+  showPage('dashboard');
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+
+async function loadDashboard() {
+  destroyCharts();
+
+  const data = await apiFetch('/reports/dashboard');
+  if (!data) return;
+
+  const cm = data.currentMonth;
+
+  // Stat cards
+  document.getElementById('stat-income').textContent   = fmt(cm.totalIncome);
+  document.getElementById('stat-expenses').textContent = fmt(cm.totalExpenses);
+  const savEl = document.getElementById('stat-savings');
+  savEl.textContent  = fmt(cm.netSavings);
+  savEl.style.color  = cm.netSavings >= 0 ? '#4a6cf7' : '#e53e3e';
+
+  // Bar chart — income vs expenses last 6 months
+  const labels = data.last6Months.map(m => MONTHS[m.month - 1] + " '" + String(m.year).slice(2));
+  barChart = new Chart(document.getElementById('bar-chart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Income',   data: data.last6Months.map(m => m.totalIncome),   backgroundColor: '#48bb78', borderRadius: 4 },
+        { label: 'Expenses', data: data.last6Months.map(m => m.totalExpenses), backgroundColor: '#fc8181', borderRadius: 4 },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v } } },
+    },
+  });
+
+  // Doughnut — expenses by category this month
+  const expCats = cm.expenseByCategory || [];
+  if (expCats.length) {
+    doughnutChart = new Chart(document.getElementById('doughnut-chart').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: expCats.map(c => c.categoryName),
+        datasets: [{ data: expCats.map(c => c.total), backgroundColor: PALETTE, borderWidth: 2 }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+      },
+    });
+  }
+
+  // Budget alerts
+  const alertsSection = document.getElementById('alerts-section');
+  const alertsList    = document.getElementById('alerts-list');
+  if (data.budgetAlerts && data.budgetAlerts.length) {
+    alertsSection.style.display = 'block';
+    alertsList.innerHTML = data.budgetAlerts.map(b => `
+      <div class="alert-card">
+        <strong>${b.category ? b.category.name : b.categoryId}</strong>
+        — spent ${fmt(b.totalSpent)} of ${fmt(b.budgetAmount)}
+        (${Math.round(b.totalSpent / b.budgetAmount * 100)}% used)
+      </div>`).join('');
+  } else {
+    alertsSection.style.display = 'none';
+  }
+
+  // Recent transactions
+  const tbody = document.getElementById('recent-txn-body');
+  if (data.recentTransactions && data.recentTransactions.length) {
+    tbody.innerHTML = data.recentTransactions.map(t => txnRow(t, false)).join('');
+  } else {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No transactions yet</td></tr>';
+  }
+}
+
+// ── Transactions ───────────────────────────────────────────────────────────
+
+function txnRow(t, withActions) {
+  const amount = parseFloat(t.amount);
+  const isIncome = t.type === 'INCOME';
+  const amtColor = isIncome ? '#38a169' : '#e53e3e';
+  const sign     = isIncome ? '+' : '−';
+  const catName  = (t.category && t.category.name) ? t.category.name : '—';
+  const extra    = withActions
+    ? `<td>${t.currency || 'USD'}</td>
+       <td><button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.id}')">Delete</button></td>`
+    : '';
+  return `<tr>
+    <td>${fmtDate(t.date)}</td>
+    <td>${t.description}</td>
+    <td>${catName}</td>
+    <td><span class="badge badge-${t.type.toLowerCase()}">${t.type}</span></td>
+    <td style="color:${amtColor};font-weight:600">${sign}${fmt(Math.abs(amount))}</td>
+    ${extra}
+  </tr>`;
+}
+
+async function loadTransactions() {
+  const dateInput = document.getElementById('txn-date');
+  if (!dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+
+  const catData = await apiFetch('/categories');
+  if (catData && catData.categories) {
+    document.getElementById('txn-category').innerHTML =
+      '<option value="">— None —</option>' +
+      catData.categories.map(c => `<option value="${c.id}">${c.name} (${c.type})</option>`).join('');
+  }
+
+  const data = await apiFetch('/transactions');
+  const tbody = document.getElementById('txn-body');
+  if (!data || !data.transactions || !data.transactions.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No transactions yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.transactions.map(t => txnRow(t, true)).join('');
+}
+
+async function handleAddTransaction(e) {
+  e.preventDefault();
+  hideErr('txn-error');
+  const body = {
+    amount:      parseFloat(document.getElementById('txn-amount').value),
+    description: document.getElementById('txn-desc').value,
+    date:        document.getElementById('txn-date').value,
+    type:        document.getElementById('txn-type').value,
+    currency:    (document.getElementById('txn-currency').value || 'USD').toUpperCase(),
+    categoryId:  document.getElementById('txn-category').value || undefined,
+  };
+  const data = await apiFetch('/transactions', { method: 'POST', body: JSON.stringify(body) });
+  if (!data) return;
+  if (data.error) return showErr('txn-error', data.error);
+  e.target.reset();
+  document.getElementById('txn-date').value     = new Date().toISOString().slice(0, 10);
+  document.getElementById('txn-currency').value = 'USD';
+  loadTransactions();
+}
+
+async function deleteTransaction(id) {
+  if (!confirm('Delete this transaction?')) return;
+  await apiFetch('/transactions/' + id, { method: 'DELETE' });
+  loadTransactions();
+}
+
+// ── Budgets ────────────────────────────────────────────────────────────────
+
+async function loadBudgets() {
+  const now = new Date();
+  const monthInput = document.getElementById('budget-month');
+  const yearInput  = document.getElementById('budget-year');
+  if (!monthInput.value) monthInput.value = now.getMonth() + 1;
+  if (!yearInput.value)  yearInput.value  = now.getFullYear();
+
+  const catData = await apiFetch('/categories');
+  if (catData && catData.categories) {
+    const expCats = catData.categories.filter(c => c.type === 'EXPENSE');
+    document.getElementById('budget-cat').innerHTML =
+      expCats.length
+        ? expCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+        : '<option value="">No expense categories</option>';
+  }
+
+  const month = monthInput.value || now.getMonth() + 1;
+  const year  = yearInput.value  || now.getFullYear();
+  const data  = await apiFetch(`/budgets?month=${month}&year=${year}`);
+  const list  = document.getElementById('budget-list');
+
+  if (!data || !data.budgets || !data.budgets.length) {
+    list.innerHTML = '<div class="card empty">No budgets set for this month</div>';
+    return;
+  }
+
+  list.innerHTML = data.budgets.map(b => {
+    const pct       = Math.min(b.percentageUsed, 100);
+    const fillClass = b.isOverBudget ? 'fill-over' : b.percentageUsed >= 80 ? 'fill-warn' : 'fill-ok';
+    const catName   = b.category ? b.category.name : b.categoryId;
+    return `<div class="budget-item">
+      <div class="budget-header">
+        <span class="budget-name">${catName}</span>
+        <button class="btn btn-sm btn-danger" onclick="deleteBudget('${b.id}')">Remove</button>
+      </div>
+      <div class="budget-meta">
+        ${fmt(b.totalSpent)} spent of ${fmt(b.budgetAmount)} budget
+        <span style="color:${b.isOverBudget ? '#e53e3e' : '#718096'}"> — ${b.percentageUsed.toFixed(1)}%</span>
+        ${b.isOverBudget ? ' <strong style="color:#e53e3e">Over budget!</strong>' : ''}
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill ${fillClass}" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function handleAddBudget(e) {
+  e.preventDefault();
+  hideErr('budget-error');
+  const body = {
+    categoryId: document.getElementById('budget-cat').value,
+    amount:     parseFloat(document.getElementById('budget-amount').value),
+    month:      parseInt(document.getElementById('budget-month').value),
+    year:       parseInt(document.getElementById('budget-year').value),
+  };
+  if (!body.categoryId) return showErr('budget-error', 'Please select a category');
+  const data = await apiFetch('/budgets', { method: 'POST', body: JSON.stringify(body) });
+  if (!data) return;
+  if (data.error) return showErr('budget-error', data.error);
+  document.getElementById('budget-amount').value = '';
+  loadBudgets();
+}
+
+async function deleteBudget(id) {
+  if (!confirm('Remove this budget?')) return;
+  await apiFetch('/budgets/' + id, { method: 'DELETE' });
+  loadBudgets();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+token ? showPage('dashboard') : showPage('login');
+</script>
+</body>
+</html>
